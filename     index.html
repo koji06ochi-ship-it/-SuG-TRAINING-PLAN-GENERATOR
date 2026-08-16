@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>S.u.G TRAINING PLAN GENERATOR</title>
+<style>
+:root{--bg:#0d0d0f;--card:#17171b;--line:#303038;--text:#f7f7f7;--muted:#b8b8c2;--accent:#f2c230;--danger:#ff7a7a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+.wrap{max-width:820px;margin:auto;padding:24px 16px 56px}.brand{font-weight:900;letter-spacing:.08em;color:var(--accent);font-size:14px}
+h1{font-size:28px;margin:8px 0 4px}h2{font-size:19px;margin:0 0 12px}.sub,.note{color:var(--muted);line-height:1.65}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin:14px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:580px){.grid{grid-template-columns:1fr}}
+label{display:block;font-size:13px;color:var(--muted);margin:4px 0 7px}
+input,select,textarea{width:100%;padding:13px 12px;border-radius:12px;border:1px solid var(--line);background:#101014;color:#fff;font-size:16px}
+textarea{min-height:88px;resize:vertical}
+button{width:100%;border:0;border-radius:14px;padding:16px;font-size:17px;font-weight:900;background:var(--accent);color:#111;margin-top:10px}
+.secondary{background:#27272d;color:#fff}.result{display:none}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#29230e;color:#ffe16a;font-size:12px;font-weight:700}
+.day{border-top:1px solid var(--line);padding-top:14px;margin-top:14px}
+.exercise{background:#101014;border-radius:14px;padding:13px;margin:9px 0}
+.exercise b{display:block;font-size:16px;margin-bottom:5px}.meta{font-size:13px;color:var(--muted);line-height:1.55}
+.warn{border-left:4px solid var(--danger);padding-left:12px}.good{border-left:4px solid var(--accent);padding-left:12px}.small{font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="brand">S.u.G OSAKA</div>
+<h1>TRAINING PLAN GENERATOR</h1>
+<div class="sub">目的・頻度・環境・経験・痛みの有無から、トレーニングプランの開始案を作成します。</div>
+
+<div class="card">
+<div class="grid">
+<div><label>目的</label><select id="goal"><option value="hypertrophy">筋肥大</option><option value="recomp" selected>リコンプ</option><option value="cut">減量</option><option value="posture">姿勢改善</option><option value="performance">競技力向上</option></select></div>
+<div><label>トレーニング経験</label><select id="experience"><option value="beginner">初心者（〜6か月）</option><option value="intermediate" selected>中級者（6か月〜3年）</option><option value="advanced">上級者（3年以上）</option></select></div>
+<div><label>週のトレーニング回数</label><select id="days"><option value="2">週2回</option><option value="3" selected>週3回</option><option value="4">週4回</option><option value="5">週5回</option></select></div>
+<div><label>1回の時間</label><select id="minutes"><option value="30">30分</option><option value="45">45分</option><option value="60" selected>60分</option><option value="90">90分</option></select></div>
+<div><label>環境</label><select id="place"><option value="gym" selected>ジム</option><option value="home">自宅</option></select></div>
+<div><label>優先部位</label><select id="priority"><option value="balanced" selected>バランス良く</option><option value="chest">胸</option><option value="back">背中</option><option value="shoulders">肩</option><option value="arms">腕</option><option value="legs">脚</option><option value="glutes">臀部</option></select></div>
+<div><label>痛み・違和感</label><select id="pain"><option value="none" selected>なし</option><option value="shoulder">肩</option><option value="neck">首</option><option value="lowerback">腰</option><option value="knee">膝</option><option value="other">その他</option></select></div>
+<div><label>医師から運動制限</label><select id="restriction"><option value="no" selected>なし</option><option value="yes">あり</option></select></div>
+</div>
+<label style="margin-top:14px">その他メモ（任意）</label>
+<textarea id="memo" placeholder="例：右肩の挙上で詰まり感、脚を優先したい、ベンチプレスは避けたい など"></textarea>
+<button onclick="generatePlan()">プランを作成する</button>
+</div>
+
+<div id="result" class="result">
+<div class="card"><span id="splitBadge" class="badge"></span><h2 style="margin-top:12px">S.u.G 推奨プラン</h2><div id="summary" class="note"></div></div>
+<div id="safety" class="card warn" style="display:none"><h2>安全確認</h2><div id="safetyText" class="note"></div></div>
+<div id="plan" class="card"></div>
+<div class="card good"><h2>進め方</h2><div id="progression" class="note"></div></div>
+<div class="card"><button class="secondary" onclick="copyPlan()">結果をコピー</button></div>
+<div class="card note small">本ツールは一般的なトレーニング開始案を作るためのもので、診断・治療を目的としたものではありません。強い痛み、しびれ、脱力、外傷直後、胸痛、息苦しさ、失神、または医師から運動制限を受けている場合は、自動プランを実施せず、医療専門職または担当トレーナーへ確認してください。</div>
+</div>
+</div>
+
+<script>
+const gym={push:[
+["インクラインプレス","3","6〜10","1〜3","中間","胸上部を主導。肩がすくまない位置で。"],
+["チェストプレス","3","8〜12","1〜3","中間","肩甲骨を安定させ、肘を開きすぎない。"],
+["ケーブルフライ","2〜3","12〜15","1〜2","収縮","胸を寄せる。肩前面に痛みが出るROMは避ける。"],
+["サイドレイズ","3","12〜20","1〜3","中間","肩をすくめず、上腕をコントロール。"],
+["トライセプスプレスダウン","2〜3","10〜15","1〜2","収縮","肘位置を固定。"]],
+pull:[
+["ラットプルダウン","3","8〜12","1〜3","中間","胸を軽く上げ、肘を腰方向へ。"],
+["シーテッドロー","3","8〜12","1〜3","中間","肩をすくめず、肩甲骨を後方へ。"],
+["ワンアームハイロー","2〜3","10〜15","1〜2","収縮","左右差を確認しながら引く。"],
+["リアデルトケーブル","3","12〜20","1〜2","収縮","僧帽筋上部で引きすぎない。"],
+["インクラインカール","2〜3","8〜12","1〜2","ストレッチ","肩を前に出さず二頭筋を伸ばす。"]],
+legs:[
+["スクワット","3","6〜10","1〜3","中間","膝とつま先の方向を揃える。"],
+["RDL","3","8〜12","1〜3","ストレッチ","股関節を後ろへ。腰で曲げない。"],
+["ブルガリアンスクワット","3","8〜12","1〜2","中間","前脚の足裏全体で押す。"],
+["レッグカール","2〜3","10〜15","1〜2","収縮","反動を使わずハムを収縮。"],
+["アブダクション","2〜3","15〜20","1〜2","収縮","骨盤を安定させ臀部外側へ。"],
+["カーフレイズ","3","12〜20","1〜2","ストレッチ","下で十分に伸ばす。"]],
+full:[
+["スクワット or レッグプレス","3","6〜10","1〜3","中間","脚全体。無理のないROM。"],
+["インクラインプレス","3","6〜10","1〜3","中間","胸上部を主導。"],
+["ラットプルダウン","3","8〜12","1〜3","中間","肘を腰方向へ。"],
+["RDL","3","8〜12","1〜3","ストレッチ","股関節主導。"],
+["サイドレイズ","2〜3","12〜20","1〜2","中間","肩をすくめない。"],
+["ケーブルカール or プレスダウン","2","10〜15","1〜2","収縮","反動なし。"]]};
+const home={full:[
+["ゴブレットスクワット","3","10〜15","1〜3","中間","膝とつま先を揃える。"],
+["プッシュアップ","3","8〜15","1〜3","中間","体幹を一直線に。"],
+["ワンアームロー","3","10〜15","1〜3","中間","肩をすくめず引く。"],
+["ダンベルRDL","3","10〜15","1〜3","ストレッチ","股関節を後ろへ。"],
+["サイドレイズ","2〜3","15〜20","1〜2","中間","肩をすくめない。"],
+["プランク","2〜3","30〜60秒","2〜3","体幹","呼吸を止めない。"]]};
+
+function clone(a){return JSON.parse(JSON.stringify(a))}
+function applyPriority(list,p){
+ const map={chest:["インクラインプレス","チェストプレス","プッシュアップ"],back:["ラットプルダウン","シーテッドロー","ワンアームハイロー","ワンアームロー"],shoulders:["サイドレイズ","リアデルトケーブル"],arms:["インクラインカール","トライセプスプレスダウン","ケーブルカール"],legs:["スクワット","レッグプレス","ブルガリアンスクワット","レッグカール"],glutes:["RDL","ブルガリアンスクワット","アブダクション","ダンベルRDL"]};
+ if(p==="balanced")return list;
+ return list.sort((a,b)=>(map[p].some(x=>a[0].includes(x))?0:1)-(map[p].some(x=>b[0].includes(x))?0:1));
+}
+function applyPain(list,p){
+ if(p==="shoulder")return list.filter(x=>!x[0].includes("フライ")).map(x=>x[0].includes("インクラインプレス")?["ニュートラルグリップ・チェストプレス","3","8〜12","2〜3","中間","痛みのないROMのみ。肩前面の詰まりが出たら中止。"]:x);
+ if(p==="lowerback")return list.map(x=>x[0].includes("RDL")?["ヒップヒンジ練習 or レッグカール","2〜3","10〜15","2〜3","コントロール","腰痛が出ない種目を選択。"]:x);
+ if(p==="knee")return list.map(x=>x[0].includes("スクワット")?["ボックススクワット or レッグプレス","3","8〜12","2〜3","中間","膝痛のないROMのみ。"]:x);
+ if(p==="neck")return list.map(x=>x[0].includes("サイドレイズ")?["軽負荷サイドレイズ","2","15〜20","3","中間","僧帽筋上部を緊張させない。"]:x);
+ return list;
+}
+function dayBlock(title,exs){return `<div class="day"><h2>${title}</h2>`+exs.map(e=>`<div class="exercise"><b>${e[0]}</b><div class="meta">SET：${e[1]} ／ REP：${e[2]} ／ RIR：${e[3]} ／ POF：${e[4]}</div><div class="meta">キュー：${e[5]}</div></div>`).join("")+`</div>`}
+
+function generatePlan(){
+ const goal=document.getElementById("goal").value,exp=document.getElementById("experience").value,days=+document.getElementById("days").value,minutes=+document.getElementById("minutes").value,place=document.getElementById("place").value,priority=document.getElementById("priority").value,pain=document.getElementById("pain").value,restriction=document.getElementById("restriction").value,memo=document.getElementById("memo").value.trim();
+ const maxExercises=minutes<=30?4:minutes<=45?5:minutes<=60?6:7;
+ let split="",html="";
+ if(place==="home"){split=`週${days}回・全身法`;for(let i=1;i<=days;i++){let ex=applyPain(applyPriority(clone(home.full),priority),pain).slice(0,maxExercises);html+=dayBlock(`DAY ${i}｜FULL BODY`,ex)}}
+ else if(days===2){split="週2回・全身A/B";html+=dayBlock("DAY 1｜FULL BODY A",applyPain(applyPriority(clone(gym.full),priority),pain).slice(0,maxExercises));html+=dayBlock("DAY 2｜FULL BODY B",applyPain(applyPriority(clone(gym.full).reverse(),priority),pain).slice(0,maxExercises))}
+ else if(days===3){split="週3回・PUSH / PULL / LEGS";html+=dayBlock("DAY 1｜PUSH",applyPain(applyPriority(clone(gym.push),priority),pain).slice(0,maxExercises));html+=dayBlock("DAY 2｜PULL",applyPain(applyPriority(clone(gym.pull),priority),pain).slice(0,maxExercises));html+=dayBlock("DAY 3｜LEGS",applyPain(applyPriority(clone(gym.legs),priority),pain).slice(0,maxExercises))}
+ else if(days===4){split="週4回・上半身 / 下半身";let u1=clone(gym.push).slice(0,3).concat(clone(gym.pull).slice(0,3));let u2=clone(gym.pull).slice(0,3).concat(clone(gym.push).slice(0,3));html+=dayBlock("DAY 1｜UPPER A",applyPain(applyPriority(u1,priority),pain).slice(0,maxExercises));html+=dayBlock("DAY 2｜LOWER A",applyPain(applyPriority(clone(gym.legs),priority),pain).slice(0,maxExercises));html+=dayBlock("DAY 3｜UPPER B",applyPain(applyPriority(u2,priority),pain).slice(0,maxExercises));html+=dayBlock("DAY 4｜LOWER B",applyPain(applyPriority(clone(gym.legs).reverse(),priority),pain).slice(0,maxExercises))}
+ else{split="週5回・PUSH / PULL / LEGS + 弱点2日";html+=dayBlock("DAY 1｜PUSH",applyPain(applyPriority(clone(gym.push),priority),pain).slice(0,maxExercises));html+=dayBlock("DAY 2｜PULL",applyPain(applyPriority(clone(gym.pull),priority),pain).slice(0,maxExercises));html+=dayBlock("DAY 3｜LEGS",applyPain(applyPriority(clone(gym.legs),priority),pain).slice(0,maxExercises));html+=dayBlock("DAY 4｜UPPER / PRIORITY",applyPain(applyPriority(clone(gym.full),priority),pain).slice(0,maxExercises));html+=dayBlock("DAY 5｜LOWER / PRIORITY",applyPain(applyPriority(clone(gym.legs),priority),pain).slice(0,maxExercises))}
+ const volume=exp==="beginner"?"各種目はまず2〜3SETから開始。":exp==="advanced"?"主要部位は週10〜18SETを目安に、回復に合わせて増減。":"主要部位は週8〜14SETを目安に、回復に合わせて増減。";
+ const goalText={hypertrophy:"筋肥大を優先し、主要種目の反復・負荷の伸びを追います。",recomp:"体重だけでなく、ウエスト・写真・筋力の変化を同時に追います。",cut:"減量中は筋力維持を優先し、疲労が強い場合はセット数を削ります。",posture:"可動域・左右差・フォーム再現性を優先し、重量は二の次にします。",performance:"競技動作を邪魔しない範囲で、筋力・パワー・可動性を組み合わせます。"}[goal];
+ document.getElementById("splitBadge").textContent=split;
+ document.getElementById("summary").innerHTML=`${goalText}<br>${volume}${memo?`<br><br>メモ：${memo}`:""}`;
+ document.getElementById("plan").innerHTML=html;
+ let safety="";
+ if(restriction==="yes")safety="医師から運動制限を受けているため、自動生成プランは実施せず、主治医または担当専門職の許可範囲を確認してください。";
+ else if(pain!=="none")safety="痛み・違和感があるため、痛みの出ないROM・負荷・種目を優先しています。強い痛み、しびれ、脱力、外傷直後、日常生活に支障がある場合は自動プランを中止してください。";
+ document.getElementById("safety").style.display=safety?"block":"none";document.getElementById("safetyText").textContent=safety;
+ document.getElementById("progression").innerHTML="1〜2週目はフォームとRIRを守って開始。<br>REP上限を全SETで達成し、フォーム・痛み・回復に問題がなければ次回は負荷を小幅に上げます。<br>睡眠不足・強い筋肉痛・関節痛・パフォーマンス低下が続く場合は、重量より先にSET数または種目数を減らします。<br>2〜4週間ごとに、主要種目のREP・RIR・痛み・疲労・見た目の変化を再評価します。";
+ document.getElementById("result").style.display="block";document.getElementById("result").scrollIntoView({behavior:"smooth"});
+}
+function copyPlan(){
+ const badge=document.getElementById("splitBadge").innerText,summary=document.getElementById("summary").innerText,planText=document.getElementById("plan").innerText,progression=document.getElementById("progression").innerText,safety=document.getElementById("safety").style.display!=="none"?document.getElementById("safetyText").innerText:"";
+ const text=`【S.u.G TRAINING PLAN】
+${badge}
+
+${summary}
+
+${safety?`【安全確認】
+${safety}
+
+`:""}【プラン】
+${planText}
+
+【進め方】
+${progression}
+
+※一般的な開始案です。痛み・体調・医療上の制限がある場合は個別確認を優先してください。`;
+ navigator.clipboard.writeText(text).then(()=>alert("トレーニングプランをコピーしました。"));
+}
+</script>
+</body>
+</html>
